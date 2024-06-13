@@ -1,40 +1,35 @@
-﻿using System;
-using System.IO;
+﻿using NAudio.Wave;
+using System;
+using System.Threading;
 using Vosk;
 
 namespace VoiceRecognize
 {
     internal class Program
     {
-        public static void DemoBytes(Model model)
-        {
-            VoskRecognizer rec = new VoskRecognizer(model, 16000.0f);
-            rec.SetMaxAlternatives(0);
-            rec.SetWords(true);
-            using (Stream source = File.OpenRead("decoder-test.wav"))//файл должен быть с такми зарактеристиками: 16khz 16bit mono Wav
-
-            {
-                byte[] buffer = new byte[4096];
-                int bytesRead;
-                while ((bytesRead = source.Read(buffer, 0, buffer.Length)) > 0)
-                {
-                    if (rec.AcceptWaveform(buffer, bytesRead))
-                    {
-                        Console.WriteLine(rec.Result());
-                    }
-                    else
-                    {
-                        Console.WriteLine(rec.PartialResult());
-                    }
-                }
-            }
-            Console.WriteLine(rec.FinalResult());
-        }
+        static VoskRecognizer rec;
         static void Main(string[] args)
         {
-            Vosk.Vosk.SetLogLevel(-1);
             Model model = new Model("C:\\Users\\goga\\Desktop\\Шняга\\VoiceRecognize\\VoiceRecognize\\vosk-model-small-ru-0.22");//Модель языка
-            DemoBytes(model);
+            rec = new VoskRecognizer(model, 16000.0f);
+            Vosk.Vosk.SetLogLevel(-1);
+            WaveInEvent waveIn = new WaveInEvent();
+            waveIn.WaveFormat = new WaveFormat(16000, 1);
+            waveIn.DataAvailable += WaveInOnDataAvailable;
+            waveIn.StartRecording();
+            while (true) { Thread.Sleep(1000); }
+        }
+
+        private static void WaveInOnDataAvailable(object sender, WaveInEventArgs e)
+        {
+            try
+            {
+                Console.WriteLine(e.Buffer.ToString(), 0, e.BytesRecorded);
+
+                if (rec.AcceptWaveform(e.Buffer, e.BytesRecorded)) Console.WriteLine(rec.Result());
+                else Console.WriteLine(rec.PartialResult());
+            }
+            catch { }
         }
     }
 }
